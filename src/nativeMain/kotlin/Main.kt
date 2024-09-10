@@ -26,6 +26,8 @@ fun main(args: Array<String>) {
         .multiple()
     val header by parser.option(ArgType.String, shortName = "H", description = "HTTP header: \"name: value\"")
         .multiple()
+    val pathVariable by parser.option(ArgType.String, shortName = "V", description = "Path variable: \"name=value\"")
+        .multiple()
     val prettyPrint by parser.option(ArgType.Boolean, shortName = "p", description = "Pretty print").default(false)
     val verbose by parser.option(ArgType.Boolean, shortName = "v", description = "Print verbose").default(false)
     val forbidRedirects by parser.option(ArgType.Boolean, description = "Forbid redirects").default(false)
@@ -38,11 +40,12 @@ fun main(args: Array<String>) {
 
         override fun execute() {
             if (text != null && file != null) {
-                throw Exception("body and file can only use one")
+                throw Exception("You can only use one of the body text and file")
             }
             data = text?.toByteArray()
                 ?: file?.let {
-                    SystemFileSystem.source(Path(it)).buffered().readByteArray()
+                    val path = Path(it)
+                    SystemFileSystem.source(path).buffered().readByteArray()
                 }
 
         }
@@ -53,6 +56,7 @@ fun main(args: Array<String>) {
 
     parser.parse(args)
 
+    val requestUrl = parsePathVariables(url, pathVariable)
     val httpMethod = HttpMethod.parse(method)
     val parameters = parseParameters(param)
     val headers = parseHeaders(header)
@@ -62,7 +66,7 @@ fun main(args: Array<String>) {
         HttpClient(Curl) {
             followRedirects = !forbidRedirects
         }.use { client ->
-            val response = client.request(url) {
+            val response = client.request(requestUrl) {
                 this.method = httpMethod
                 for (p in parameters) {
                     this.parameter(p.first, p.second)
@@ -118,6 +122,24 @@ private fun parseHeaders(headers: List<String>?): List<Pair<String, String>> {
         val name = header.substring(0, index)
         val value = header.substring(index + 2)
         result.add(name to value)
+    }
+    return result
+}
+
+private fun parsePathVariables(url: String, pathVariables: List<String>?): String {
+    if (pathVariables.isNullOrEmpty()) {
+        return url
+    }
+
+    var result = url
+    for (pathVariable in pathVariables) {
+        val index = pathVariable.indexOf('=')
+        if (index <= 0) {
+            throw Exception("Invalid path variable: $pathVariable")
+        }
+        val name = pathVariable.substring(0, index)
+        val value = pathVariable.substring(index + 1)
+        result = result.replace("{$name}", value)
     }
     return result
 }
