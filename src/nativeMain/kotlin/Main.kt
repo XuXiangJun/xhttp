@@ -13,10 +13,12 @@ import kotlinx.io.readByteArray
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
+private const val VERSION = "0.9"
+
 @OptIn(ExperimentalCli::class)
 fun main(args: Array<String>) {
     val parser = ArgParser("xhttp")
-    val url by parser.option(ArgType.String, shortName = "u", description = "HTTP URL").required()
+    val url by parser.option(ArgType.String, shortName = "u", description = "HTTP URL")
     val method by parser.option(
         ArgType.String,
         shortName = "m",
@@ -31,6 +33,7 @@ fun main(args: Array<String>) {
     val prettyPrint by parser.option(ArgType.Boolean, shortName = "p", description = "Pretty print").default(false)
     val verbose by parser.option(ArgType.Boolean, shortName = "v", description = "Print verbose").default(false)
     val forbidRedirects by parser.option(ArgType.Boolean, description = "Forbid redirects").default(false)
+    val version by parser.option(ArgType.Boolean, description = "Version").default(false)
 
     class HttpBody : Subcommand("body", "HTTP body") {
         val text by option(ArgType.String, shortName = "t", description = "HTTP text")
@@ -50,13 +53,22 @@ fun main(args: Array<String>) {
 
         }
     }
-
     val body = HttpBody()
     parser.subcommands(body)
 
     parser.parse(args)
 
-    val requestUrl = parsePathVariables(url, pathVariable)
+    if (version) {
+        println("xhttp version: $VERSION")
+        return
+    }
+
+    if (url == null) {
+        println("Error: Unknown url")
+        return
+    }
+
+    val requestUrl = parsePathVariables(url!!, pathVariable)
     val httpMethod = HttpMethod.parse(method)
     val parameters = parseParameters(param)
     val headers = parseHeaders(header)
