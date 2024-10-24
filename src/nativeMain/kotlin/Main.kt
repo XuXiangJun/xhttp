@@ -18,10 +18,10 @@ private const val VERSION = "0.9.1"
 @OptIn(ExperimentalCli::class)
 fun main(args: Array<String>) {
     val parser = ArgParser("xhttp")
-    val url by parser.option(ArgType.String, shortName = "u", description = "HTTP URL")
+    val url by parser.option(ArgType.String, shortName = "U", description = "HTTP URL")
     val method by parser.option(
         ArgType.String,
-        shortName = "m",
+        shortName = "M",
         description = "HTTP method name: GET, POST, PUT, DELETE..."
     ).default("GET")
     val param by parser.option(ArgType.String, shortName = "P", description = "HTTP parameter: \"name=value\"")
