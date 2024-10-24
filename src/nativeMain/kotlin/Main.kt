@@ -63,7 +63,7 @@ fun main(args: Array<String>) {
         return
     }
 
-    if (url == null) {
+    if (url.isNullOrBlank()) {
         println("Error: Unknown url")
         return
     }
