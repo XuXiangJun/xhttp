@@ -32,7 +32,7 @@ fun main(args: Array<String>) {
         .multiple()
     val prettyPrint by parser.option(ArgType.Boolean, shortName = "p", description = "Pretty print").default(false)
     val verbose by parser.option(ArgType.Boolean, shortName = "v", description = "Print verbose").default(false)
-    val forbidRedirects by parser.option(ArgType.Boolean, description = "Forbid redirects").default(false)
+    val allowRedirects by parser.option(ArgType.Boolean, description = "Allow redirects").default(false)
     val version by parser.option(ArgType.Boolean, description = "Version").default(false)
 
     class HttpBody : Subcommand("body", "HTTP body") {
@@ -76,7 +76,7 @@ fun main(args: Array<String>) {
 
     runBlocking {
         HttpClient(Curl) {
-            followRedirects = !forbidRedirects
+            followRedirects = allowRedirects
         }.use { client ->
             val response = client.request(requestUrl) {
                 this.method = httpMethod

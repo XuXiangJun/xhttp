@@ -20,7 +20,7 @@ kotlin {
                 implementation("io.ktor:ktor-client-core:$ktorVersion")
                 implementation("io.ktor:ktor-client-curl:$ktorVersion")
                 implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.9.0")
-                implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.2")
+                implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3")
                 implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.6.0")
                 implementation("org.jetbrains.kotlinx:kotlinx-cli:0.3.6")
                 implementation("org.jetbrains.kotlinx:kotlinx-io-core:0.5.3")
