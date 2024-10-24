@@ -13,7 +13,7 @@ import kotlinx.io.readByteArray
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
-private const val VERSION = "0.9"
+private const val VERSION = "0.9.1"
 
 @OptIn(ExperimentalCli::class)
 fun main(args: Array<String>) {

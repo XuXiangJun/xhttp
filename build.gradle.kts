@@ -4,7 +4,7 @@ plugins {
 //    id("org.jetbrains.kotlinx.atomicfu") version "0.25.0"
 }
 
-val ktorVersion = "2.3.12"
+val ktorVersion = "3.0.0"
 
 group = "org.xuxiangjun.xhttp"
 version = "1.0-SNAPSHOT"
