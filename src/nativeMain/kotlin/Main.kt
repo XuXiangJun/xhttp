@@ -3,17 +3,15 @@ import io.ktor.client.engine.curl.*
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import io.ktor.http.*
-import io.ktor.utils.io.core.*
 import kotlinx.cli.*
 import kotlinx.coroutines.runBlocking
 import kotlinx.io.buffered
 import kotlinx.io.files.Path
 import kotlinx.io.files.SystemFileSystem
 import kotlinx.io.readByteArray
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
-private const val VERSION = "0.9.1"
+private const val VERSION = "0.9.2"
 
 @OptIn(ExperimentalCli::class)
 fun main(args: Array<String>) {
@@ -45,7 +43,7 @@ fun main(args: Array<String>) {
             if (text != null && file != null) {
                 throw Exception("You can only use one of the body text and file")
             }
-            data = text?.toByteArray()
+            data = text?.encodeToByteArray()
                 ?: file?.let {
                     val path = Path(it)
                     SystemFileSystem.source(path).buffered().readByteArray()
