@@ -1,10 +1,10 @@
 plugins {
-    kotlin("multiplatform") version "2.1.10"
-    kotlin("plugin.serialization") version "2.1.10"
+    kotlin("multiplatform") version "2.1.20"
+    kotlin("plugin.serialization") version "2.1.20"
 //    id("org.jetbrains.kotlinx.atomicfu") version "0.25.0"
 }
 
-val ktorVersion = "3.1.0"
+val ktorVersion = "3.1.1"
 val cliVersion = "0.3.6"
 val coroutinesVersion = "1.10.1"
 val serializationVersion = "1.8.0"
