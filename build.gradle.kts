@@ -1,25 +1,56 @@
 plugins {
-    kotlin("multiplatform") version "2.1.20"
-    kotlin("plugin.serialization") version "2.1.20"
-//    id("org.jetbrains.kotlinx.atomicfu") version "0.25.0"
+    kotlin("multiplatform") version "2.4.10"
+    kotlin("plugin.serialization") version "2.4.10"
 }
 
-val ktorVersion = "3.1.1"
+val ktorVersion = "3.5.2"
 val cliVersion = "0.3.6"
-val coroutinesVersion = "1.10.1"
-val serializationVersion = "1.8.0"
-val datetimeVersion = "0.6.2"
-val ioVersion = "0.5.3"
+val coroutinesVersion = "1.11.0"
+val serializationVersion = "1.11.0"
+val datetimeVersion = "0.8.0"
+val ioVersion = "0.9.1"
 
 group = "org.xuxiangjun.xhttp"
-version = "0.9.2"
+version = providers.gradleProperty("appVersion").orElse("0.0.0").get()
 
 repositories {
     mavenLocal()
     mavenCentral()
 }
 
+val generatedVersionDir = layout.buildDirectory.dir("generated/version/kotlin")
+val generatedVersionFile = generatedVersionDir.map { it.file("Version.kt") }
+
+// Single source of truth for the version: it lives in gradle.properties (`appVersion`),
+// is injected into the build as `project.version`, and generated as an `APP_VERSION`
+// constant consumed by the CLI's `--version` output.
+val generateVersionFile = tasks.register("generateVersionFile") {
+    group = "build"
+    description = "Generates Version.kt from the project version"
+    inputs.property("appVersion", project.version.toString())
+    outputs.file(generatedVersionFile)
+    doLast {
+        val versionValue = project.version.toString()
+        val output = generatedVersionFile.get().asFile
+        output.parentFile.mkdirs()
+        output.writeText(
+            """
+            |package org.xuxiangjun.xhttp
+            |
+            |internal const val APP_VERSION = "$versionValue"
+            |
+            """.trimMargin()
+        )
+    }
+}
+
 kotlin {
+    linuxX64() {
+        binaries {
+            executable()
+        }
+    }
+
     sourceSets {
         commonMain {
             dependencies {
@@ -34,12 +65,12 @@ kotlin {
         }
     }
 
-    // mingwX64("native") // on Windows
-    // macosX64("native") //on macOS
-    // linuxX64("native") // on Linux
-    linuxX64("native") {
-        binaries {
-            executable()
-        }
+    // Register the generated Version.kt into the target's own source set once it exists.
+    sourceSets.getByName("linuxX64Main") {
+        kotlin.srcDir(generatedVersionDir.get())
     }
+}
+
+tasks.matching { it.name.startsWith("compileKotlin") }.configureEach {
+    dependsOn(generateVersionFile)
 }
