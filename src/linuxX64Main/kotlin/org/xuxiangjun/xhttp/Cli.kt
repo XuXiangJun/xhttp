@@ -33,7 +33,6 @@ internal data class XhttpArgs(
     val insecure: Boolean,
     val proxy: String?,
     val output: String?,
-    val progress: Boolean,
     val session: Boolean,
     val connectTimeoutSeconds: Long?,
     val socketTimeoutSeconds: Long?,
@@ -72,7 +71,7 @@ internal fun parseCliArgs(args: Array<String>): XhttpArgs {
         .option(ArgType.String, fullName = "form", shortName = "F", description = "Multipart form field \"name=value\" or \"name=@file\" (repeatable)")
         .multiple()
     val output by parser
-        .option(ArgType.String, fullName = "output", shortName = "o", description = "Write the response body to a file")
+        .option(ArgType.String, fullName = "output", shortName = "o", description = "Write the response body to a file, streaming with download progress on stderr")
     val prettyPrint by parser
         .option(ArgType.Boolean, fullName = "pretty", description = "Pretty-print JSON response bodies")
         .default(false)
@@ -105,9 +104,6 @@ internal fun parseCliArgs(args: Array<String>): XhttpArgs {
         .multiple()
     val session by parser
         .option(ArgType.Boolean, fullName = "session", description = "Keep an in-memory cookie jar and reuse cookies on redirects")
-        .default(false)
-    val progress by parser
-        .option(ArgType.Boolean, fullName = "progress", description = "Show download progress to stderr (requires --output)")
         .default(false)
     val connectTimeout by parser
         .option(ArgType.Int, fullName = "connect-timeout", description = "Connection timeout in seconds")
@@ -191,7 +187,6 @@ internal fun parseCliArgs(args: Array<String>): XhttpArgs {
         insecure = insecure,
         proxy = proxy,
         output = output,
-        progress = progress,
         session = session,
         connectTimeoutSeconds = validateTimeout(connectTimeout, "connect-timeout"),
         socketTimeoutSeconds = validateTimeout(socketTimeout, "socket-timeout"),

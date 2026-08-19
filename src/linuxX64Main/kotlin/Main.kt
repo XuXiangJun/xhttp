@@ -4,7 +4,7 @@ import org.xuxiangjun.xhttp.APP_VERSION
 import org.xuxiangjun.xhttp.Stderr
 import org.xuxiangjun.xhttp.XhttpException
 import org.xuxiangjun.xhttp.createHttpClient
-import org.xuxiangjun.xhttp.executeRequest
+import org.xuxiangjun.xhttp.prepareRequestStatement
 import org.xuxiangjun.xhttp.failWithUsage
 import org.xuxiangjun.xhttp.parseCliArgs
 import org.xuxiangjun.xhttp.writeResponse
@@ -25,11 +25,23 @@ fun main(args: Array<String>) {
 
         runBlocking {
             createHttpClient(resolved).use { client ->
-                val response = executeRequest(client, resolved)
-                writeResponse(resolved, response)
-                if (resolved.failOnError && response.status.value >= 400) {
-                    // The body has already been printed; exit non-zero for scripts.
-                    exitProcess(FAIL_EXIT_CODE)
+                val statement = prepareRequestStatement(client, resolved)
+                if (resolved.output != null) {
+                    // Stream the body: `statement.execute { }` keeps the connection open while the
+                    // block runs, so -o writes chunks to disk as they arrive instead of buffering
+                    // the whole body first.
+                    statement.execute { response ->
+                        writeResponse(resolved, response)
+                        if (resolved.failOnError && response.status.value >= 400) {
+                            exitProcess(FAIL_EXIT_CODE)
+                        }
+                    }
+                } else {
+                    val response = statement.execute()
+                    writeResponse(resolved, response)
+                    if (resolved.failOnError && response.status.value >= 400) {
+                        exitProcess(FAIL_EXIT_CODE)
+                    }
                 }
             }
         }

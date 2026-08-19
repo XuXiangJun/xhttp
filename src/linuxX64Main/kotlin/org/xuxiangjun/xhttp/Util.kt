@@ -68,15 +68,3 @@ internal fun readFileBytes(path: String): ByteArray {
         failWithUsage("Cannot read file '$path': ${e.message}")
     }
 }
-
-/** Writes bytes to a file, creating/overwriting it. Throws [XhttpException] on failure. */
-internal fun writeFileBytes(path: String, bytes: ByteArray) {
-    try {
-        SystemFileSystem.sink(Path(path)).buffered().use {
-            it.write(bytes)
-            it.flush()
-        }
-    } catch (e: Exception) {
-        throw XhttpException("Cannot write file '$path': ${e.message}")
-    }
-}

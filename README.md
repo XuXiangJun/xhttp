@@ -57,8 +57,8 @@ xhttp -V id=42 https://api.example.com/users/{id}
 xhttp -u user:pass https://api.example.com/secure          # HTTP Basic
 xhttp --bearer "$TOKEN" https://api.example.com/secure     # Bearer token
 
-# Download a file with progress
-xhttp -o archive.tar.gz --progress https://example.com/archive.tar.gz
+# Download a file (streamed to disk; progress is printed to stderr when it is a TTY)
+xhttp -o archive.tar.gz https://example.com/archive.tar.gz
 
 # Full request/response dump (to stderr), follows redirects
 xhttp -vL https://example.com
@@ -86,7 +86,7 @@ xhttp --proxy http://127.0.0.1:8080 https://example.com
 | `-d, --data TEXT` | Request body; `@file` reads from a file |
 | `--data-file FILE` | Request body from a file |
 | `-F, --form "name=value"` | Multipart field; `name=@file` uploads a file (repeatable) |
-| `-o, --output FILE` | Write the response body to a file |
+| `-o, --output FILE` | Stream the response body to a file, with download progress on stderr (TTY only) |
 | `--pretty` | Pretty-print JSON responses |
 | `-v, --verbose` | Full request/response exchange to stderr |
 | `-i, --include` | Include response status + headers in stdout output |
@@ -99,7 +99,6 @@ xhttp --proxy http://127.0.0.1:8080 https://example.com
 | `--proxy URL` | HTTP proxy (e.g. `http://127.0.0.1:8080`) |
 | `-c, --cookie "name=value"` | Cookie (repeatable) |
 | `--session` | In-memory cookie jar reused across redirects |
-| `--progress` | Download progress to stderr (with `--output`) |
 | `--connect-timeout SEC` | Connection timeout in seconds |
 | `--socket-timeout SEC` | Socket timeout in seconds |
 | `--request-timeout SEC` | Overall request timeout in seconds |

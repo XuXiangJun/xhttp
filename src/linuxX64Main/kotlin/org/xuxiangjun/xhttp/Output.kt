@@ -3,11 +3,15 @@ package org.xuxiangjun.xhttp
 import io.ktor.client.statement.*
 import io.ktor.http.*
 import io.ktor.utils.io.readAvailable
+import kotlinx.cinterop.ExperimentalForeignApi
+import kotlinx.io.RawSink
 import kotlinx.io.buffered
 import kotlinx.io.files.Path
 import kotlinx.io.files.SystemFileSystem
 import kotlinx.serialization.json.Json
 import kotlin.system.exitProcess
+import platform.posix.STDERR_FILENO
+import platform.posix.isatty
 
 private val jsonPretty = Json { prettyPrint = true }
 
@@ -15,7 +19,7 @@ private val jsonPretty = Json { prettyPrint = true }
  * Prints the response according to the CLI flags:
  *  - `-v`    full exchange to stderr;
  *  - `-i`    status line + headers to stdout;
- *  - `-o`    raw body written to a file (optionally with progress);
+ *  - `-o`    raw body streamed to a file, with download progress on stderr;
  *  - `-p`    JSON is pretty-printed, other bodies are passed through.
  */
 internal suspend fun writeResponse(args: XhttpArgs, response: HttpResponse) {
@@ -81,41 +85,86 @@ private fun printResponseHeadersToStderr(response: HttpResponse) {
 
 private suspend fun writeBodyToFile(args: XhttpArgs, response: HttpResponse) {
     val path = args.output!!
-    if (args.progress) {
-        writeBodyToFileWithProgress(response, path)
-    } else {
-        writeFileBytes(path, response.bodyAsBytes())
-    }
-}
-
-private suspend fun writeBodyToFileWithProgress(response: HttpResponse, path: String) {
     val total = response.headers[HttpHeaders.ContentLength]?.toLongOrNull()
     val channel = response.bodyAsChannel()
-    val sink = SystemFileSystem.sink(Path(path)).buffered()
+    val showProgress = stderrIsTty()
     var received = 0L
+    var printed = false
     val buffer = ByteArray(64 * 1024)
+    // Created inside the try so that a failure to open the file (missing directory,
+    // no permission, ...) surfaces as a friendly "Cannot write file ..." error.
+    var sink: RawSink? = null
     try {
+        sink = SystemFileSystem.sink(Path(path)).buffered()
         while (true) {
             val read = channel.readAvailable(buffer)
             if (read == -1) break
             if (read > 0) {
                 sink.write(buffer, 0, read)
                 received += read
-                if (total != null && total > 0) {
-                    val percent = received * 100 / total
-                    Stderr.print("\r$received/$total bytes ($percent%)")
-                } else {
-                    Stderr.print("\r$received bytes received")
+                if (showProgress) {
+                    printed = true
+                    if (total != null && total > 0) {
+                        val percent = received.toDouble() / total * 100.0
+                        Stderr.print(
+                            "\r${formatDownloadedSize(received)} / ${formatDownloadedSize(total)} " +
+                                "(${formatPercent(percent)})"
+                        )
+                    } else {
+                        Stderr.print("\r${formatDownloadedSize(received)} downloaded")
+                    }
                 }
             }
         }
         sink.flush()
-        Stderr.println("")
+        if (printed) {
+            Stderr.println("")
+        }
     } catch (e: Exception) {
         throw XhttpException("Cannot write file '$path': ${e.message}")
     } finally {
-        sink.close()
+        // close() may itself throw (e.g. the file could never be opened); never let it
+        // mask the original exception.
+        try {
+            sink?.close()
+        } catch (_: Exception) {
+            // ignore
+        }
     }
+}
+
+/** Whether stderr is attached to a terminal; download progress is only shown then. */
+@OptIn(ExperimentalForeignApi::class)
+private fun stderrIsTty(): Boolean = isatty(STDERR_FILENO) != 0
+
+private const val KIBIBYTE = 1024.0
+private const val MEBIBYTE = 1024.0 * 1024.0
+private const val GIBIBYTE = 1024.0 * 1024.0 * 1024.0
+
+/** Formats a downloaded byte count using the most readable binary unit. */
+private fun formatDownloadedSize(bytes: Long): String {
+    return when {
+        bytes < 1024L -> "$bytes bytes"
+        bytes < 1024L * 1024L -> "${formatDecimal(bytes / KIBIBYTE, 1)} KB"
+        bytes < 1024L * 1024L * 1024L -> "${formatDecimal(bytes / MEBIBYTE, 1)} MB"
+        else -> "${formatDecimal(bytes / GIBIBYTE, 2)} GB"
+    }
+}
+
+private fun formatPercent(percent: Double): String = "${formatDecimal(percent, 1)}%"
+
+/** Rounds [value] to [decimalPlaces] decimal places without relying on JVM-only String.format. */
+private fun formatDecimal(value: Double, decimalPlaces: Int): String {
+    val factor = when (decimalPlaces) {
+        1 -> 10.0
+        2 -> 100.0
+        else -> 1.0
+    }
+    val scaled = kotlin.math.round(value * factor).toLong()
+    val factorLong = factor.toLong()
+    val whole = scaled / factorLong
+    val fraction = scaled % factorLong
+    return "$whole.${fraction.toString().padStart(decimalPlaces, '0')}"
 }
 
 private fun printPrettyJsonOrRaw(text: String) {

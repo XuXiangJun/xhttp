@@ -11,9 +11,7 @@ import io.ktor.client.statement.*
 import io.ktor.http.*
 import io.ktor.http.content.PartData
 import io.ktor.utils.io.ByteReadChannel
-import io.ktor.utils.io.InternalAPI
 import kotlin.io.encoding.Base64
-import kotlin.io.encoding.ExperimentalEncodingApi
 
 /** Builds the HTTP client with all engine/plugin settings derived from the CLI arguments. */
 internal fun createHttpClient(args: XhttpArgs): HttpClient = HttpClient(Curl) {
@@ -40,12 +38,18 @@ internal fun createHttpClient(args: XhttpArgs): HttpClient = HttpClient(Curl) {
     }
 }
 
-/** Executes the request described by [args] and returns the raw response. */
-internal suspend fun executeRequest(client: HttpClient, args: XhttpArgs): HttpResponse {
+/** Builds the request described by [args] as an [HttpStatement], without executing it yet.
+ *
+ * Using `prepareRequest { ... }.execute { ... }` (instead of `client.request { ... }`) lets
+ * callers stream the response body — `request {}` fully buffers the body before returning,
+ * so a large `-o` download would show no progress and create the output file only at the end.
+ */
+internal suspend fun prepareRequestStatement(client: HttpClient, args: XhttpArgs): HttpStatement {
     val targetUrl = args.url ?: failWithUsage("No URL provided")
     val requestUrl = applyPathVariables(targetUrl, args.pathVariables)
 
-    return client.request(requestUrl) {
+    return client.prepareRequest {
+        url(requestUrl)
         method = args.method
         for ((name, value) in args.parameters) {
             parameter(name, value)
@@ -67,6 +71,10 @@ internal suspend fun executeRequest(client: HttpClient, args: XhttpArgs): HttpRe
     }
 }
 
+/** Executes the request described by [args] and fully buffers the response body in memory. */
+internal suspend fun executeRequest(client: HttpClient, args: XhttpArgs): HttpResponse =
+    prepareRequestStatement(client, args).execute()
+
 private fun HttpRequestBuilder.applyAuthentication(args: XhttpArgs) {
     args.user?.let { header(HttpHeaders.Authorization, basicAuthorization(it)) }
     args.bearer?.let { header(HttpHeaders.Authorization, "Bearer $it") }
@@ -81,7 +89,6 @@ private fun HttpRequestBuilder.applyJsonHeaders() {
     }
 }
 
-@OptIn(ExperimentalEncodingApi::class)
 private fun basicAuthorization(userColonPassword: String): String {
     val separator = userColonPassword.indexOf(':')
     val user = if (separator >= 0) userColonPassword.substring(0, separator) else userColonPassword
@@ -89,7 +96,6 @@ private fun basicAuthorization(userColonPassword: String): String {
     return "Basic " + Base64.encode("$user:$password".encodeToByteArray())
 }
 
-@OptIn(InternalAPI::class)
 private fun buildMultipart(fields: List<FormField>): MultiPartFormDataContent {
     val parts = fields.map { field ->
         if (field.file != null) {
