@@ -14,7 +14,7 @@ sudo apt-get install libcurl4-gnutls-dev
 ```shell
 ./gradlew linkReleaseExecutableLinuxX64
 ```
-- output: `build/bin/native/releaseExecutable/native.kexe`
+- output: `uild/bin/linuxX64/releaseExecutable/xhttp.kexe`
 
 ## Usage
 
