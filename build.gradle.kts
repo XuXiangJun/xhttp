@@ -1,15 +1,15 @@
 plugins {
-    kotlin("multiplatform") version "2.1.20"
-    kotlin("plugin.serialization") version "2.1.20"
+    kotlin("multiplatform") version "2.4.10"
+    kotlin("plugin.serialization") version "2.4.10"
 //    id("org.jetbrains.kotlinx.atomicfu") version "0.25.0"
 }
 
-val ktorVersion = "3.1.1"
+val ktorVersion = "3.5.2"
 val cliVersion = "0.3.6"
-val coroutinesVersion = "1.10.1"
-val serializationVersion = "1.8.0"
-val datetimeVersion = "0.6.2"
-val ioVersion = "0.5.3"
+val coroutinesVersion = "1.11.0"
+val serializationVersion = "1.11.0"
+val datetimeVersion = "0.8.0"
+val ioVersion = "0.9.1"
 
 group = "org.xuxiangjun.xhttp"
 version = "0.9.2"
