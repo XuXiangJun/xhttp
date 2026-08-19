@@ -11,11 +11,10 @@ extras (JSON pretty-printing, path variables, built-in multipart forms).
 ```shell
 sudo apt-get install libcurl4-gnutls-dev
 ```
-
 ```shell
-./gradlew linkReleaseExecutableNative
-# binary: build/bin/native/releaseExecutable/native.kexe
+./gradlew linkReleaseExecutableLinuxX64
 ```
+- output: `build/bin/native/releaseExecutable/native.kexe`
 
 ## Usage
 
