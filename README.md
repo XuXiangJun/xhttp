@@ -33,7 +33,7 @@ your `PATH` as `xhttp`.
 xhttp https://api.github.com/repos/JetBrains/kotlin
 
 # JSON pretty-print (Content-Type: application/json)
-xhttp -p https://api.github.com/repos/JetBrains/kotlin
+xhttp --pretty https://api.github.com/repos/JetBrains/kotlin
 
 # Query parameters
 xhttp -P page=2 -P per_page=10 https://api.example.com/items
@@ -88,10 +88,10 @@ xhttp --proxy http://127.0.0.1:8080 https://example.com
 | `--data-file FILE` | Request body from a file |
 | `-F, --form "name=value"` | Multipart field; `name=@file` uploads a file (repeatable) |
 | `-o, --output FILE` | Write the response body to a file |
-| `-p, --pretty` | Pretty-print JSON responses |
+| `--pretty` | Pretty-print JSON responses |
 | `-v, --verbose` | Full request/response exchange to stderr |
 | `-i, --include` | Include response status + headers in stdout output |
-| `-L, --allow-redirects` | Follow redirects |
+| `-L, --allow-redirects` | Follow redirects (default: true) |
 | `--fail` | Exit with status 22 when HTTP status >= 400 |
 | `--json` | Set `Content-Type`/`Accept` to `application/json` and validate `--data` |
 | `-u, --user user:pass` | HTTP Basic authentication |

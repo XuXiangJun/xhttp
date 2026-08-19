@@ -74,7 +74,7 @@ internal fun parseCliArgs(args: Array<String>): XhttpArgs {
     val output by parser
         .option(ArgType.String, fullName = "output", shortName = "o", description = "Write the response body to a file")
     val prettyPrint by parser
-        .option(ArgType.Boolean, fullName = "pretty", shortName = "p", description = "Pretty-print JSON response bodies")
+        .option(ArgType.Boolean, fullName = "pretty", description = "Pretty-print JSON response bodies")
         .default(false)
     val verbose by parser
         .option(ArgType.Boolean, fullName = "verbose", shortName = "v", description = "Print the full request/response exchange to stderr")
@@ -84,7 +84,7 @@ internal fun parseCliArgs(args: Array<String>): XhttpArgs {
         .default(false)
     val allowRedirects by parser
         .option(ArgType.Boolean, fullName = "allow-redirects", shortName = "L", description = "Follow HTTP redirects")
-        .default(false)
+        .default(true)
     val failOnError by parser
         .option(ArgType.Boolean, fullName = "fail", description = "Exit with status 22 when the HTTP status is >= 400")
         .default(false)
