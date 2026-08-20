@@ -2,16 +2,15 @@ package org.xuxiangjun.xhttp
 
 import io.ktor.client.statement.*
 import io.ktor.http.*
-import io.ktor.utils.io.readAvailable
-import kotlinx.cinterop.ExperimentalForeignApi
+import io.ktor.utils.io.*
 import kotlinx.io.RawSink
 import kotlinx.io.buffered
 import kotlinx.io.files.Path
 import kotlinx.io.files.SystemFileSystem
 import kotlinx.serialization.json.Json
-import kotlin.system.exitProcess
 import platform.posix.STDERR_FILENO
 import platform.posix.isatty
+import kotlin.system.exitProcess
 
 private val jsonPretty = Json { prettyPrint = true }
 
@@ -134,7 +133,6 @@ private suspend fun writeBodyToFile(args: XhttpArgs, response: HttpResponse) {
 }
 
 /** Whether stderr is attached to a terminal; download progress is only shown then. */
-@OptIn(ExperimentalForeignApi::class)
 private fun stderrIsTty(): Boolean = isatty(STDERR_FILENO) != 0
 
 private const val KIBIBYTE = 1024.0
@@ -171,7 +169,7 @@ private fun printPrettyJsonOrRaw(text: String) {
     try {
         val element = jsonPretty.parseToJsonElement(text)
         println(jsonPretty.encodeToString(element))
-    } catch (e: Exception) {
+    } catch (_: Exception) {
         // Invalid JSON: degrade gracefully instead of crashing.
         println(text)
     }
