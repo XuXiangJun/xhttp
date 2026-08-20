@@ -1,70 +1,130 @@
 package org.xuxiangjun.xhttp
 
-import io.ktor.http.URLBuilder
-import io.ktor.http.takeFrom
-import kotlinx.io.buffered
-import kotlinx.io.files.Path
-import kotlinx.io.files.SystemFileSystem
-import kotlinx.io.readByteArray
+import kotlin.math.abs
+import kotlin.math.floor
 
-/** Parses a list of `name=value` strings (query parameters, path variables, cookies, ...). */
-internal fun parseKeyValuePairs(items: List<String>?, what: String): List<Pair<String, String>> {
-    if (items.isNullOrEmpty()) return emptyList()
-    return items.map { item ->
-        val index = item.indexOf('=')
-        if (index <= 0) {
-            failWithUsage("Invalid $what '$item': expected 'name=value'")
-        }
-        item.substring(0, index) to item.substring(index + 1)
-    }
-}
+private val headerNameToken = Regex("""[!#$%&'*+.^_`|~0-9A-Za-z-]+""")
 
-/** Parses a list of header strings, accepting both `Name: value` and `Name:value`. */
-internal fun parseHeaderPairs(items: List<String>?): List<Pair<String, String>> {
-    if (items.isNullOrEmpty()) return emptyList()
-    return items.map { raw ->
-        val withSpace = raw.indexOf(": ")
-        when {
-            withSpace > 0 -> raw.substring(0, withSpace) to raw.substring(withSpace + 2)
-            else -> {
-                val index = raw.indexOf(':')
-                if (index <= 0) {
-                    failWithUsage("Invalid header '$raw': expected 'Name: value'")
-                }
-                raw.substring(0, index) to raw.substring(index + 1).trimStart(' ', '\t')
-            }
-        }
+/** Parses `name=value` strings (query parameters, path variables, form fields, ...). */
+internal fun parseKeyValuePairs(items: List<String>, what: String): List<Pair<String, String>> =
+    items.map { parseKeyValuePair(it, what) }
+
+/** Parses a single `name=value` string, splitting on the first `=`. */
+internal fun parseKeyValuePair(item: String, what: String): Pair<String, String> {
+    val index = item.indexOf('=')
+    if (index <= 0) {
+        failWithUsage("Invalid $what '$item': expected 'name=value'.")
     }
+    return item.substring(0, index) to item.substring(index + 1)
 }
 
 /**
- * Replaces `{name}` placeholders in the URL path with the given values.
+ * Parses `Name: value` header arguments.
  *
- * The result is rebuilt through [URLBuilder], so path-variable values are properly percent-encoded
- * (a value containing `/`, `?` or spaces cannot corrupt or inject into the URL).
+ * The split is always on the *first* colon, so values that themselves contain `": "` survive
+ * (`-H 'X-Trace: id: 42'`). `Name;` sends the header with an empty value, like curl.
  */
-internal fun applyPathVariables(url: String, pathVariables: List<Pair<String, String>>): String {
-    if (pathVariables.isEmpty()) return url
-    val builder = try {
-        URLBuilder().takeFrom(url)
-    } catch (e: Exception) {
-        failWithUsage("Invalid URL '$url': ${e.message}")
+internal fun parseHeaderPairs(items: List<String>): List<Pair<String, String>> = items.map { raw ->
+    val item = raw.trim()
+    if (item.endsWith(";") && !item.contains(':')) {
+        val name = item.dropLast(1)
+        validateHeaderName(name, raw)
+        return@map name to ""
     }
-    builder.pathSegments = builder.pathSegments.map { segment ->
-        var result = segment
-        for ((name, value) in pathVariables) {
-            result = result.replace("{$name}", value)
-        }
-        result
+    val index = item.indexOf(':')
+    if (index <= 0) {
+        failWithUsage("Invalid header '$raw': expected 'Name: value' (or 'Name;' for an empty value).")
     }
-    return builder.buildString()
+    val name = item.substring(0, index).trimEnd()
+    validateHeaderName(name, raw)
+    name to item.substring(index + 1).trimStart(' ', '\t')
 }
 
-/** Reads a whole file as bytes. Fails with a friendly message on any I/O error. */
-internal fun readFileBytes(path: String): ByteArray {
-    return try {
-        SystemFileSystem.source(Path(path)).buffered().use { it.readByteArray() }
-    } catch (e: Exception) {
-        failWithUsage("Cannot read file '$path': ${e.message}")
+private fun validateHeaderName(name: String, raw: String) {
+    if (name.isEmpty() || !headerNameToken.matches(name)) {
+        failWithUsage("Invalid header '$raw': '$name' is not a valid header name.")
     }
+}
+
+private const val KIBIBYTE = 1024.0
+private const val MEBIBYTE = 1024.0 * 1024.0
+private const val GIBIBYTE = 1024.0 * 1024.0 * 1024.0
+
+/** Formats a byte count using the most readable binary unit. */
+internal fun formatBytes(bytes: Long): String = when {
+    bytes < 1024L -> "$bytes B"
+    bytes < 1024L * 1024L -> "${formatDecimal(bytes / KIBIBYTE, 1)} KiB"
+    bytes < 1024L * 1024L * 1024L -> "${formatDecimal(bytes / MEBIBYTE, 1)} MiB"
+    else -> "${formatDecimal(bytes / GIBIBYTE, 2)} GiB"
+}
+
+/** Formats a transfer rate such as `1.4 MiB/s`. */
+internal fun formatRate(bytesPerSecond: Double): String = when {
+    bytesPerSecond.isNaN() || bytesPerSecond <= 0.0 -> "--"
+    bytesPerSecond < KIBIBYTE -> "${formatDecimal(bytesPerSecond, 0)} B/s"
+    bytesPerSecond < MEBIBYTE -> "${formatDecimal(bytesPerSecond / KIBIBYTE, 1)} KiB/s"
+    bytesPerSecond < GIBIBYTE -> "${formatDecimal(bytesPerSecond / MEBIBYTE, 1)} MiB/s"
+    else -> "${formatDecimal(bytesPerSecond / GIBIBYTE, 2)} GiB/s"
+}
+
+/** Formats a duration in seconds as `mm:ss`, or `--:--` when it is unknown. */
+internal fun formatClock(seconds: Double): String {
+    if (seconds.isNaN() || seconds.isInfinite() || seconds < 0.0) return "--:--"
+    val total = seconds.toLong()
+    if (total >= 100L * 3600L) return "--:--"
+    val hours = total / 3600
+    val minutes = (total % 3600) / 60
+    val secs = total % 60
+    return if (hours > 0) {
+        "$hours:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}"
+    } else {
+        "${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}"
+    }
+}
+
+private val decimalFactors = longArrayOf(1, 10, 100, 1_000, 10_000, 100_000, 1_000_000)
+
+/**
+ * Rounds [value] to [decimalPlaces] digits.
+ *
+ * Kotlin/Native has no `String.format`, so the digits are assembled by hand; negatives and the
+ * carry from `9.99 -> 10.0` are handled explicitly.
+ */
+internal fun formatDecimal(value: Double, decimalPlaces: Int): String {
+    if (value.isNaN()) return "NaN"
+    if (value.isInfinite()) return if (value > 0) "Inf" else "-Inf"
+    val places = decimalPlaces.coerceIn(0, decimalFactors.size - 1)
+    val factor = decimalFactors[places]
+    val negative = value < 0
+    // floor(x + 0.5) rather than kotlin.math.round: the latter rounds ties to even, so 1.25 would
+    // display as 1.2 while every other tool shows 1.3.
+    val scaled = floor(abs(value) * factor + 0.5).toLong()
+    val whole = scaled / factor
+    val fraction = scaled % factor
+    val sign = if (negative && scaled != 0L) "-" else ""
+    return if (places == 0) {
+        "$sign$whole"
+    } else {
+        "$sign$whole.${fraction.toString().padStart(places, '0')}"
+    }
+}
+
+/** Levenshtein distance, used to suggest the option the user probably meant. */
+internal fun editDistance(a: String, b: String): Int {
+    if (a == b) return 0
+    if (a.isEmpty()) return b.length
+    if (b.isEmpty()) return a.length
+    var previous = IntArray(b.length + 1) { it }
+    var current = IntArray(b.length + 1)
+    for (i in 1..a.length) {
+        current[0] = i
+        for (j in 1..b.length) {
+            val substitution = previous[j - 1] + if (a[i - 1] == b[j - 1]) 0 else 1
+            current[j] = minOf(current[j - 1] + 1, previous[j] + 1, substitution)
+        }
+        val swap = previous
+        previous = current
+        current = swap
+    }
+    return previous[b.length]
 }

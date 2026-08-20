@@ -1,0 +1,223 @@
+.TH XHTTP 1 "2026" "xhttp" "User Commands"
+.SH NAME
+xhttp \- script-friendly HTTP client
+.SH SYNOPSIS
+.B xhttp
+[\fIoptions\fR] \fIURL\fR...
+.SH DESCRIPTION
+.B xhttp
+is a command-line HTTP client built on Kotlin/Native and the Ktor curl engine. It follows
+.BR curl (1)
+for short flags and exit codes, and adds JSON pretty-printing, a JSON field selector, path
+variables and built-in multipart forms.
+.PP
+A URL without a scheme is treated as
+.IR http:// .
+Several URLs may be given; curl-style globs
+.RI ( {a,b} " and " [1-9] )
+are expanded unless
+.B \-g
+is used.
+.SH OPTIONS
+.SS Request
+.TP
+.BR \-X ", " \-\-request " \fIMETHOD\fR"
+HTTP method. Defaults to GET, or POST when a body is present.
+.TP
+.BR \-H ", " \-\-header " \fILINE\fR"
+Add a header, \fIName: value\fR. \fIName;\fR sends an empty value. Repeatable.
+.TP
+.BR \-P ", " \-\-param " \fINAME=VALUE\fR"
+Add a query parameter. Repeatable.
+.TP
+.BR \-V ", " \-\-path\-variable " \fINAME=VALUE\fR"
+Replace \fI{name}\fR in the URL path. The value is percent-encoded. Repeatable.
+An unresolved placeholder is an error.
+.TP
+.BR \-A ", " \-\-user\-agent " \fISTRING\fR"
+Set the User-Agent header.
+.TP
+.BR \-e ", " \-\-referer " \fIURL\fR"
+Set the Referer header.
+.TP
+.BR \-I ", " \-\-head
+Send HEAD and print only the response headers.
+.TP
+.BR \-G ", " \-\-get
+Send the \fB\-\-data\fR payload as a query string.
+.SS Request body
+.TP
+.BR \-d ", " \-\-data " \fIDATA\fR"
+Request body. \fI@file\fR reads a file, \fI@\-\fR reads standard input. Repeatable; parts are
+joined with \fI&\fR. Newlines are stripped from file input.
+.TP
+.B \-\-data\-raw " \fIDATA\fR"
+As \fB\-\-data\fR, but \fI@\fR is not special.
+.TP
+.B \-\-data\-binary " \fIDATA\fR"
+As \fB\-\-data\fR, but file contents are sent verbatim and streamed from disk.
+.TP
+.B \-\-data\-urlencode " \fIDATA\fR"
+URL-encode the value. Accepts \fIvalue\fR, \fI=value\fR, \fIname=value\fR, \fI@file\fR and
+\fIname@file\fR.
+.TP
+.B \-\-data\-file " \fIFILE\fR"
+Stream the request body from a file.
+.TP
+.BR \-F ", " \-\-form " \fINAME=VALUE\fR"
+Multipart field. \fIname=@file\fR uploads a streamed file and accepts the \fI;type=\fR and
+\fI;filename=\fR attributes; \fIname=<file\fR uses the file content as the value. Repeatable.
+.TP
+.B \-\-form\-string " \fINAME=VALUE\fR"
+Multipart field whose value is always literal.
+.TP
+.B \-\-json
+Set Content-Type and Accept to application/json and validate the payload.
+.SS Output
+.TP
+.BR \-o ", " \-\-output " \fIFILE\fR"
+Write the body to \fIFILE\fR. \fI\-\fR means standard output.
+.TP
+.BR \-O ", " \-\-remote\-name
+Save to a file named after the last path segment of the URL.
+.TP
+.B \-\-output\-dir " \fIDIR\fR"
+Directory for \fB\-o\fR and \fB\-O\fR.
+.TP
+.B \-\-create\-dirs
+Create missing parent directories of the output file.
+.TP
+.BR \-C ", " \-\-continue\-at " \-"
+Resume a partial download using the size of the existing file.
+.TP
+.BR \-i ", " \-\-include
+Print the status line and headers before the body.
+.TP
+.B \-\-print " \fISPEC\fR"
+Select what goes to standard output: \fIH\fR request headers, \fIB\fR request body,
+\fIh\fR response headers, \fIb\fR response body.
+.TP
+.BR \-\-pretty ", " \-\-no\-pretty
+Pretty-print JSON bodies. On by default when standard output is a terminal.
+.TP
+.BR \-\-color ", " \-\-no\-color
+Colourize JSON and header names. On by default for a terminal; \fBNO_COLOR\fR disables it.
+.TP
+.B \-\-select " \fIPATH\fR"
+Extract part of a JSON body: \fI.a.b\fR, \fI[0]\fR, \fI[\-1]\fR, \fI["key"]\fR and \fI[]\fR to fan
+out over an array. A missing field yields \fInull\fR. Primitives are printed raw.
+.TP
+.BR \-w ", " \-\-write\-out " \fIFORMAT\fR"
+Print a summary after the transfer. See WRITE-OUT VARIABLES.
+.TP
+.BR \-s ", " \-\-silent
+Suppress progress and error messages.
+.TP
+.BR \-S ", " \-\-show\-error
+Keep error messages even with \fB\-\-silent\fR.
+.TP
+.BR \-v ", " \-\-verbose
+Print request and response headers to standard error. Credentials are redacted.
+.TP
+.B \-\-trace
+As \fB\-\-verbose\fR, plus the request body and unredacted headers.
+.TP
+.BR \-f ", " \-\-fail
+Suppress the body and exit 22 when the status is 400 or greater.
+.SS Connection
+.TP
+.BR \-L ", " \-\-allow\-redirects ", " \-\-no\-allow\-redirects
+Follow redirects. On by default.
+.TP
+.B \-\-max\-redirs " \fIN\fR"
+Maximum number of redirects (default 20).
+.TP
+.B \-\-connect\-timeout ", " \-\-socket\-timeout ", " \-\-request\-timeout " \fISEC\fR"
+Timeouts in seconds. \fB\-m\fR, \fB\-\-max\-time\fR is an alias of \fB\-\-request\-timeout\fR.
+.TP
+.B \-\-retry " \fIN\fR"
+Retry transient failures and 5xx/429 responses. \fB\-\-retry\-delay\fR sets a fixed delay;
+otherwise the back-off is exponential.
+.TP
+.B \-\-limit\-rate " \fIRATE\fR"
+Cap the download speed, e.g. \fI200K\fR or \fI2M\fR.
+.TP
+.BR \-x ", " \-\-proxy " \fIURL\fR"
+Proxy URL: http://, https:// or socks5://host:port. \fB\-\-proxy\-user\fR sets credentials and
+\fB\-\-noproxy\fR lists hosts that bypass it.
+.SS Authentication and TLS
+.TP
+.BR \-u ", " \-\-user " \fIUSER\fR[:\fIPASS\fR]"
+HTTP Basic credentials. Without a password, one is read from the terminal with echo disabled so it
+never appears in \fBps\fR output or shell history.
+.TP
+.B \-\-bearer " \fITOKEN\fR"
+Bearer token.
+.TP
+.BR \-n ", " \-\-netrc ", " \-\-netrc\-file " \fIFILE\fR"
+Take credentials from a netrc file.
+.TP
+.BR \-k ", " \-\-insecure
+Do not verify the server certificate.
+.TP
+.B \-\-cacert " \fIFILE\fR" ", " \-\-capath " \fIDIR\fR"
+Certificate authorities used to verify the server.
+.SS Cookies
+.TP
+.BR \-c ", " \-\-cookie " \fINAME=VALUE\fR"
+Send a cookie. An argument without \fI=\fR is treated as a cookie file. Repeatable.
+.TP
+.BR \-b ", " \-\-cookie\-file " \fIFILE\fR"
+Load cookies from a Netscape cookie file.
+.TP
+.B \-\-cookie\-jar " \fIFILE\fR"
+Write the cookies back when the run ends.
+.TP
+.B \-\-session " \fINAME\fR"
+Load and store cookies in \fI~/.config/xhttp/sessions/NAME.txt\fR.
+.SS General
+.TP
+.BR \-\-config " \fIFILE\fR" ", " \-\-no\-config
+Read default options from a file, or ignore it.
+.TP
+.BR \-g ", " \-\-globoff
+Do not expand \fI{a,b}\fR and \fI[1-9]\fR in URLs.
+.TP
+.B \-\-dry\-run
+Print the request that would be sent, and exit.
+.TP
+.BR \-\-version ", " \-h ", " \-\-help
+Print the version, or the help screen.
+.SH WRITE-OUT VARIABLES
+.B %{http_code}
+,
+.BR %{response_code} ,
+.BR %{url_effective} ,
+.BR %{num_redirects} ,
+.BR %{size_download} ,
+.BR %{size_header} ,
+.BR %{speed_download} ,
+.BR %{time_total} ,
+.BR %{time_starttransfer} ,
+.BR %{content_type} ,
+.BR %{json} .
+The escapes \fI\\n\fR, \fI\\t\fR and \fI\\\\\fR are expanded, and \fI%%\fR is a literal percent
+sign. Unknown variables are an error.
+.SH FILES
+.TP
+.I ~/.config/xhttp/config
+Default options, one long option per line, without the leading dashes.
+.TP
+.I ~/.config/xhttp/sessions/NAME.txt
+Cookie jars created by \fB\-\-session\fR, in Netscape format.
+.TP
+.I ~/.netrc
+Credentials used by \fB\-\-netrc\fR.
+.SH ENVIRONMENT
+.B HTTP_PROXY, HTTPS_PROXY, ALL_PROXY, NO_PROXY, NO_COLOR, XHTTP_CONFIG, XDG_CONFIG_HOME
+.SH EXIT STATUS
+0 success, 2 usage error, 3 malformed URL, 6 DNS failure, 7 connection failure, 18 partial
+transfer, 22 HTTP error with \fB\-\-fail\fR, 23 write error, 26 read error, 28 timeout,
+35 TLS handshake failure, 47 too many redirects, 60 untrusted certificate.
+.SH SEE ALSO
+.BR curl (1)

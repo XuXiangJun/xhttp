@@ -1,0 +1,41 @@
+name: CI
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install libcurl
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libcurl4-gnutls-dev
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Build and test
+        run: ./gradlew build check --stacktrace
+
+      - name: Smoke-test the binary
+        run: |
+          ./gradlew installBinary
+          ./build/install/xhttp --version
+          ./build/install/xhttp --help > /dev/null
+          ./build/install/xhttp --dry-run -X POST -d 'a=1' http://example.com/
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: xhttp-linux-x64
+          path: build/install/xhttp
+          if-no-files-found: error
