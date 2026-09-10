@@ -1,8 +1,8 @@
 import org.jetbrains.kotlin.gradle.plugin.mpp.NativeBuildType
 
 plugins {
-    kotlin("multiplatform") version "2.4.10"
-    kotlin("plugin.serialization") version "2.4.10"
+    kotlin("multiplatform") version "2.4.20"
+    kotlin("plugin.serialization") version "2.4.20"
 }
 
 val ktorVersion = "3.5.2"
